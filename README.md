@@ -2,8 +2,8 @@
 
 This is a task to test potential candidate skills in Python + SQL + TypeScript.
 
-- **Assignment**: Add Role-Aware Access + Architecture Decisions
-- **Timebox**: Aim for up to 3 hours. If you cut scope, say what you cut and why.
+- **Assignment**: Add Role-Aware Access + Architecture Decisions + **Run the app**
+- **Timebox**: Aim for up to 1 hour. If you cut scope, say what you cut and why.
 
 
 ## Table of Contents
@@ -43,14 +43,14 @@ You may reuse any libraries already in the template.
 
 ## Suggested Time Allocation
 
-How we believe it is doable in 3-hours timebox:
+How we believe it is doable in a 1-hour timebox:
 
 | Activity | Time           | Priority |
 |----------|----------------|----------|
-| Understanding the codebase | 40 min         | High |
-| Implementation (clear, maintainable code) | 1 hour 50 mins | **Critical** |
-| Testing (focused, critical paths) | 25 min         | High |
-| Documentation (README updates) | 15 min         | Medium |
+| Understanding the codebase | 15 min         | High |
+| Implementation (clear, maintainable code) | 25 mins | **Critical** |
+| Testing (focused, critical paths) | 10 min         | High |
+| Documentation (README updates) | 10 min         | Medium |
 
 **If running short on time:**
 - ✓ **Prioritize**: Clear, working authorization code with consistent patterns
@@ -83,7 +83,7 @@ Clone the repository: https://github.com/fastapi/full-stack-fastapi-template/tre
 
 **Exact permission mapping is up to you.**
 
-State it clearly in your docs and enforce it consistently in backend and frontend.
+State it clearly in your docs and enforce it consistently in the backend and frontend.
 
 #### Example Permission Matrix (Document Something Similar)
 
@@ -124,13 +124,13 @@ Document your implementation approach clearly but concisely.
 - [ ] **1-2 Architecture Decision Records (ADRs)** for your most critical decisions
   - Use any simple ADR format (problem, options, decision, trade-offs)
   - 200-400 words each
-  - Example topics: Why you chose your authorization pattern, where checks live, how frontend handles permissions
+  - Example topics: Why you chose your authorization pattern, where checks live, how the frontend handles permissions
 - [ ] **Simple diagram** showing where auth/authz checks happen
   - Mermaid, C4-style, or hand-drawn PNG is fine
 
 **Philosophy**: We value clear thinking over formal documentation. 
-Your code should clearly explain your approach, that's usually sufficient.
-RBAC implementation though usually have at least few options to implement, hence additional README will add value.
+Your code should clearly explain your approach; that's usually sufficient.
+RBAC implementation, though, usually has at least a few options to implement, hence an additional README will add value.
 
 ### 5. Non-Functional Requirements
 
@@ -145,12 +145,12 @@ Demonstrate you considered real-world constraints:
 
 - Provide **focused backend tests** covering critical authorization paths
 
-> **Note**: Tests are required, but we prioritize **quality over quantity**. 3 well-chosen tests with clean code beats 20 tests with spaghetti code.
+> **Note**: Tests are required, but we prioritize **quality over quantity**. 3 well-chosen tests with clean code beat 20 tests with spaghetti code.
 
 ### 3. UX Behavior
 
 - **The UI** should:
-  - Hide navigation links/buttons the user can't access
+  - Hide navigation links/buttons that the user can't access
   - Show a friendly "Forbidden" or "Access Denied" message if navigating directly to unauthorized routes
   - Not just fail silently or show cryptic errors
 
