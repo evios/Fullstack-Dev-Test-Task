@@ -85,7 +85,7 @@ Clone the repository: https://github.com/fastapi/full-stack-fastapi-template/tre
 
 State it clearly in your docs and enforce it consistently in the backend and frontend.
 
-#### Example Permission Matrix (Document Something Similar)
+#### Permission Matrix
 
 | Action | admin | manager | member |
 |--------|-------|---------|--------|
@@ -94,6 +94,8 @@ State it clearly in your docs and enforce it consistently in the backend and fro
 | View metrics | ✓ | ✓ | ✗ |
 | Update own profile | ✓ | ✓ | ✓ |
 | Update any profile | ✓ | ✗ | ✗ |
+
+This is the permission mapping implemented in the application.
 
 ### 3. Code Quality Expectations
 
@@ -112,12 +114,18 @@ Document your implementation approach clearly but concisely.
 
 #### Required
 
-- [ ] **Permission matrix** in README showing which role can access what
-- [ ] **Brief explanation** (2-4 paragraphs) of your authorization approach:
+- [x] **Permission matrix** in README showing which role can access what
+- [x] **Brief explanation** of the authorization approach:
   - Where authorization checks live (middleware, dependencies, decorators?)
   - How roles are stored and validated
   - How frontend learns about user capabilities
-- [ ] **Inline code comments** only for non-obvious authorization logic
+- [x] **Inline code comments** only for non-obvious authorization logic
+
+Backend authorization is enforced at route boundaries through the dependency functions in `backend/app/api/deps.py`. User listing and metrics require manager or admin, while creating or changing another user requires admin. Authenticated users can view and update their own profile. Denied API requests return HTTP 403.
+
+Roles are stored on the user as the `Role` enum (`admin`, `manager`, or `member`). The CRUD layer synchronizes admin with the legacy `is_superuser` flag, and the migration backfills existing superusers to the admin role. The initial account configured by `FIRST_SUPERUSER` is created as an admin.
+
+The frontend reads the role from the authenticated user response. Shared helpers in `frontend/src/utils/roles.ts` drive navigation visibility and route guards; unauthorized direct navigation leads to a friendly `/forbidden` page. Backend authorization remains authoritative even when a link is hidden in the UI.
 
 #### Optional (Bonus Points)
 
@@ -164,6 +172,19 @@ Update the README with:
 - **Database migrations** for any schema changes (if applicable)
 
 Make it easy for us to run your solution without hunting for setup instructions.
+
+#### Local setup
+
+1. Set local values in `.env`, including `SECRET_KEY`, `POSTGRES_PASSWORD`, and `FIRST_SUPERUSER_PASSWORD`.
+2. Start PostgreSQL and Mailpit: `docker compose up -d db mailpit`.
+3. From `backend/`, install dependencies and prepare the database: `uv sync && uv run bash scripts/prestart.sh`.
+4. Start the API from `backend/`: `uv run fastapi dev`.
+5. From the repository root, install frontend dependencies: `bun install`.
+6. Start the frontend from the root: `bun run dev`.
+
+The initial admin uses `FIRST_SUPERUSER` and `FIRST_SUPERUSER_PASSWORD`. Signup creates a member. An admin can create a manager by sending `role: "manager"` to `POST /api/v1/users/`.
+
+Run the focused backend tests with `cd backend && uv run pytest tests/api/routes/test_users.py -q`; build the frontend with `cd frontend && npm run build`. The Alembic migration `6a2b3c4d5e6f` adds the role column and backfills existing superusers. `scripts/prestart.sh` applies migrations and initializes the admin account.
 
 ## What We Review
 

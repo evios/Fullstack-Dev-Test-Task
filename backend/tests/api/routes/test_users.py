@@ -457,7 +457,7 @@ def test_delete_user_me_as_superuser(
     )
     assert r.status_code == 403
     response = r.json()
-    assert response["detail"] == "Super users are not allowed to delete themselves"
+    assert response["detail"] == "Admins are not allowed to delete themselves"
 
 
 def test_delete_user_super_user(
@@ -502,7 +502,61 @@ def test_delete_user_current_super_user_error(
         headers=superuser_token_headers,
     )
     assert r.status_code == 403
-    assert r.json()["detail"] == "Super users are not allowed to delete themselves"
+    assert r.json()["detail"] == "Admins are not allowed to delete themselves"
+
+
+def test_manager_can_list_users_but_not_create_user(
+    client: TestClient, db: Session
+) -> None:
+    manager = UserCreate(
+        email=random_email(),
+        password=random_lower_string(),
+        role="manager",
+    )
+    manager_user = crud.create_user(session=db, user_create=manager)
+    login_data = {"username": manager_user.email, "password": manager.password}
+    token_response = client.post(
+        f"{settings.API_V1_STR}/login/access-token", data=login_data
+    )
+    assert token_response.status_code == 200
+    headers = {"Authorization": f"Bearer {token_response.json()['access_token']}"}
+
+    users_response = client.get(f"{settings.API_V1_STR}/users/", headers=headers)
+    assert users_response.status_code == 200
+    metrics_response = client.get(f"{settings.API_V1_STR}/metrics/", headers=headers)
+    assert metrics_response.status_code == 200
+
+    create_response = client.post(
+        f"{settings.API_V1_STR}/users/",
+        headers=headers,
+        json={"email": random_email(), "password": random_lower_string()},
+    )
+    assert create_response.status_code == 403
+
+
+def test_member_can_view_own_profile_but_not_list_users(
+    client: TestClient, db: Session
+) -> None:
+    member = UserCreate(
+        email=random_email(),
+        password=random_lower_string(),
+        role="member",
+    )
+    member_user = crud.create_user(session=db, user_create=member)
+    login_data = {"username": member_user.email, "password": member.password}
+    token_response = client.post(
+        f"{settings.API_V1_STR}/login/access-token", data=login_data
+    )
+    assert token_response.status_code == 200
+    headers = {"Authorization": f"Bearer {token_response.json()['access_token']}"}
+
+    me_response = client.get(f"{settings.API_V1_STR}/users/me", headers=headers)
+    assert me_response.status_code == 200
+
+    list_response = client.get(f"{settings.API_V1_STR}/users/", headers=headers)
+    assert list_response.status_code == 403
+    metrics_response = client.get(f"{settings.API_V1_STR}/metrics/", headers=headers)
+    assert metrics_response.status_code == 403
 
 
 def test_delete_user_without_privileges(

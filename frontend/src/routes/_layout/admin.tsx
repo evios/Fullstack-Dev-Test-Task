@@ -8,6 +8,7 @@ import { columns, type UserTableData } from "@/components/Admin/columns"
 import { DataTable } from "@/components/Common/DataTable"
 import PendingUsers from "@/components/Pending/PendingUsers"
 import useAuth from "@/hooks/useAuth"
+import { canManageUsers, canViewUsers } from "@/utils/roles"
 
 function getUsersQueryOptions() {
   return {
@@ -21,9 +22,9 @@ export const Route = createFileRoute("/_layout/admin")({
   component: Admin,
   beforeLoad: async () => {
     const { data: user } = await UsersService.readUserMe()
-    if (!user.is_superuser) {
+    if (!canViewUsers(user)) {
       throw redirect({
-        to: "/",
+        to: "/forbidden",
       })
     }
   },
@@ -39,13 +40,16 @@ export const Route = createFileRoute("/_layout/admin")({
 function UsersTableContent() {
   const { user: currentUser } = useAuth()
   const { data: users } = useSuspenseQuery(getUsersQueryOptions())
+  const userColumns = canManageUsers(currentUser)
+    ? columns
+    : columns.filter((column) => column.id !== "actions")
 
   const tableData: UserTableData[] = users.data.map((user: UserPublic) => ({
     ...user,
     isCurrentUser: currentUser?.id === user.id,
   }))
 
-  return <DataTable columns={columns} data={tableData} />
+  return <DataTable columns={userColumns} data={tableData} />
 }
 
 function UsersTable() {
@@ -57,16 +61,20 @@ function UsersTable() {
 }
 
 function Admin() {
+  const { user: currentUser } = useAuth()
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Users</h1>
           <p className="text-muted-foreground">
-            Manage user accounts and permissions
+            {canManageUsers(currentUser)
+              ? "Manage user accounts and permissions"
+              : "View user accounts"}
           </p>
         </div>
-        <AddUser />
+        {canManageUsers(currentUser) && <AddUser />}
       </div>
       <UsersTable />
     </div>

@@ -4,12 +4,21 @@ from typing import Any
 from sqlmodel import Session, select
 
 from app.core.security import get_password_hash, verify_password
-from app.models import Item, ItemCreate, User, UserCreate, UserUpdate
+from app.models import Item, ItemCreate, Role, User, UserCreate, UserUpdate
 
 
 def create_user(*, session: Session, user_create: UserCreate) -> User:
+    effective_role = user_create.role
+    if "role" not in user_create.model_fields_set and user_create.is_superuser:
+        effective_role = Role.ADMIN
+    is_superuser = bool(user_create.is_superuser) or effective_role == Role.ADMIN
     db_obj = User.model_validate(
-        user_create, update={"hashed_password": get_password_hash(user_create.password)}
+        user_create,
+        update={
+            "hashed_password": get_password_hash(user_create.password),
+            "role": effective_role,
+            "is_superuser": is_superuser,
+        },
     )
     session.add(db_obj)
     session.commit()
@@ -20,6 +29,10 @@ def create_user(*, session: Session, user_create: UserCreate) -> User:
 def update_user(*, session: Session, db_user: User, user_in: UserUpdate) -> Any:
     user_data = user_in.model_dump(exclude_unset=True)
     extra_data = {}
+    if "role" in user_data and user_data["role"] is not None:
+        user_data["is_superuser"] = user_data["role"] == Role.ADMIN
+    elif "is_superuser" in user_data and user_data["is_superuser"] is not None:
+        user_data["role"] = Role.ADMIN if user_data["is_superuser"] else Role.MEMBER
     if "password" in user_data:
         password = user_data["password"]
         hashed_password = get_password_hash(password)
