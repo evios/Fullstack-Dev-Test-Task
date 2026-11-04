@@ -237,6 +237,10 @@ Run the focused backend tests with `cd backend && uv run pytest tests/api/routes
 - [ ] Working implementation of RBAC
 - [ ] Optional: `NOTES.md` with anything you want us to know (scope cuts, trade-offs, what you'd do with more time)
 
+## Additional infrastructure task
+
+The separate Ghost blog deployment for Hetzner, with SSH available only over Tailscale, is documented in [infra/ghost/README.md](./infra/ghost/README.md).
+
 ---
 
 **Good luck!** Focus on demonstrating clear thinking and solid engineering fundamentals. We're looking for maintainable code, not perfect code.
