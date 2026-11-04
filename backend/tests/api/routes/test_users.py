@@ -44,7 +44,7 @@ def test_create_user_new_email(
     ):
         username = random_email()
         password = random_lower_string()
-        data = {"email": username, "password": password}
+        data = {"email": username, "password": password, "role": "manager"}
         r = client.post(
             f"{settings.API_V1_STR}/users/",
             headers=superuser_token_headers,
@@ -55,6 +55,8 @@ def test_create_user_new_email(
         user = crud.get_user_by_email(session=db, email=username)
         assert user
         assert user.email == created_user["email"]
+        assert created_user["role"] == "manager"
+        assert created_user["is_superuser"] is False
 
 
 def test_get_existing_user_as_superuser(
@@ -379,6 +381,53 @@ def test_update_user(
     db.refresh(user_db)
     assert user_db
     assert user_db.full_name == "Updated_full_name"
+
+
+def test_admin_can_change_user_role_and_superuser_flag(
+    client: TestClient, superuser_token_headers: dict[str, str], db: Session
+) -> None:
+    user_in = UserCreate(email=random_email(), password=random_lower_string())
+    user = crud.create_user(session=db, user_create=user_in)
+
+    promote_response = client.patch(
+        f"{settings.API_V1_STR}/users/{user.id}",
+        headers=superuser_token_headers,
+        json={"role": "admin"},
+    )
+    assert promote_response.status_code == 200
+    assert promote_response.json()["role"] == "admin"
+    assert promote_response.json()["is_superuser"] is True
+
+    demote_response = client.patch(
+        f"{settings.API_V1_STR}/users/{user.id}",
+        headers=superuser_token_headers,
+        json={"role": "manager"},
+    )
+    assert demote_response.status_code == 200
+    assert demote_response.json()["role"] == "manager"
+    assert demote_response.json()["is_superuser"] is False
+
+    db.refresh(user)
+    assert user.role == "manager"
+    assert user.is_superuser is False
+
+
+def test_non_admin_cannot_change_user_role(
+    client: TestClient, normal_user_token_headers: dict[str, str], db: Session
+) -> None:
+    user_in = UserCreate(email=random_email(), password=random_lower_string())
+    user = crud.create_user(session=db, user_create=user_in)
+
+    response = client.patch(
+        f"{settings.API_V1_STR}/users/{user.id}",
+        headers=normal_user_token_headers,
+        json={"role": "admin"},
+    )
+
+    assert response.status_code == 403
+    db.refresh(user)
+    assert user.role == "member"
+    assert user.is_superuser is False
 
 
 def test_update_user_not_exists(

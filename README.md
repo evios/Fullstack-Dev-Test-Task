@@ -121,7 +121,7 @@ Document your implementation approach clearly but concisely.
   - How frontend learns about user capabilities
 - [x] **Inline code comments** only for non-obvious authorization logic
 
-Backend authorization is enforced at route boundaries through the dependency functions in `backend/app/api/deps.py`. User listing and metrics require manager or admin, while creating or changing another user requires admin. Authenticated users can view and update their own profile. Denied API requests return HTTP 403.
+Backend authorization is enforced at route boundaries through the dependency functions in `backend/app/api/deps.py`. User listing and metrics require manager or admin, while creating or changing another user (including their role) requires admin. Authenticated users can view and update their own profile. Denied API requests return HTTP 403.
 
 Roles are stored on the user as the `Role` enum (`admin`, `manager`, or `member`). The CRUD layer synchronizes admin with the legacy `is_superuser` flag, and the migration backfills existing superusers to the admin role. The initial account configured by `FIRST_SUPERUSER` is created as an admin.
 
@@ -182,7 +182,7 @@ Make it easy for us to run your solution without hunting for setup instructions.
 5. From the repository root, install frontend dependencies: `bun install`.
 6. Start the frontend from the root: `bun run dev`.
 
-The initial admin uses `FIRST_SUPERUSER` and `FIRST_SUPERUSER_PASSWORD`. Signup creates a member. An admin can create a manager by sending `role: "manager"` to `POST /api/v1/users/`.
+The initial admin uses `FIRST_SUPERUSER` and `FIRST_SUPERUSER_PASSWORD` and is created when the database is initialized. To seed a non-admin user, open the app's **Sign up** page and register an account; public signup always creates a member. An admin can also create or edit users and select member, manager, or admin; the creation role defaults to member. The API accepts a `role` value on `POST /api/v1/users/`.
 
 Run the focused backend tests with `cd backend && uv run pytest tests/api/routes/test_users.py -q`; build the frontend with `cd frontend && npm run build`. The Alembic migration `6a2b3c4d5e6f` adds the role column and backfills existing superusers. `scripts/prestart.sh` applies migrations and initializes the admin account.
 
