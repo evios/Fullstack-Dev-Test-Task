@@ -241,6 +241,8 @@ Run the focused backend tests with `cd backend && uv run pytest tests/api/routes
 
 The separate Ghost blog deployment for Hetzner, with SSH available only over Tailscale, is documented in [infra/ghost/README.md](./infra/ghost/README.md).
 
+AI conversations for these tasks are in [docs/ai-conversations/2026-11-04-assignment-conversations.md](./docs/ai-conversations/2026-11-04-assignment-conversations.md).
+
 ---
 
 **Good luck!** Focus on demonstrating clear thinking and solid engineering fundamentals. We're looking for maintainable code, not perfect code.
