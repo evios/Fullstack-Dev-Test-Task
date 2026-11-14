@@ -1,8 +1,11 @@
 import uuid
 from datetime import UTC, datetime
 
-from pydantic import EmailStr
+from pydantic import EmailStr, computed_field, field_validator
+from sqlalchemy import String
 from sqlmodel import Field, Relationship, SQLModel
+
+from app.core.permissions import Permission, UserRole, permissions_for
 
 
 def get_datetime_utc() -> datetime:
@@ -13,7 +16,7 @@ def get_datetime_utc() -> datetime:
 class UserBase(SQLModel):
     email: EmailStr = Field(unique=True, index=True, max_length=255)
     is_active: bool = True
-    is_superuser: bool = False
+    role: UserRole = Field(default=UserRole.MEMBER, sa_type=String(length=20))
     full_name: str | None = Field(default=None, max_length=255)
 
 
@@ -32,9 +35,17 @@ class UserRegister(SQLModel):
 class UserUpdate(SQLModel):
     email: EmailStr | None = Field(default=None, max_length=255)
     is_active: bool | None = None
-    is_superuser: bool | None = None
+    role: UserRole | None = None
     full_name: str | None = Field(default=None, max_length=255)
     password: str | None = Field(default=None, min_length=8, max_length=128)
+
+    # Omitting the role leaves it unchanged; an explicit null is rejected.
+    @field_validator("role")
+    @classmethod
+    def reject_null_role(cls, role: UserRole | None) -> UserRole:
+        if role is None:
+            raise ValueError("role cannot be null")
+        return role
 
 
 class UserUpdateMe(SQLModel):
@@ -59,6 +70,15 @@ class User(UserBase, table=True):
 class UserPublic(UserBase):
     id: uuid.UUID
     created_at: datetime | None = None
+
+
+# The current user plus what their role allows; the frontend uses this list
+# to decide which pages and actions to show.
+class UserMePublic(UserPublic):
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def permissions(self) -> list[Permission]:
+        return sorted(permissions_for(self.role))
 
 
 class UsersPublic(SQLModel):
@@ -103,6 +123,13 @@ class ItemPublic(ItemBase):
 class ItemsPublic(SQLModel):
     data: list[ItemPublic]
     count: int
+
+
+class MetricsPublic(SQLModel):
+    total_users: int
+    active_users: int
+    users_by_role: dict[UserRole, int]
+    total_items: int
 
 
 # Generic message
