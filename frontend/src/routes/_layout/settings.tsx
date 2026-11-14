@@ -25,8 +25,12 @@ export const Route = createFileRoute("/_layout/settings")({
 
 function UserSettings() {
   const { user: currentUser } = useAuth()
+  // Admins can't delete their own account (the API refuses), so they get no
+  // danger zone.
   const finalTabs =
-    currentUser?.role === "admin" ? tabsConfig.slice(0, 3) : tabsConfig
+    currentUser?.role === "admin"
+      ? tabsConfig.filter((tab) => tab.value !== "danger-zone")
+      : tabsConfig
 
   if (!currentUser) {
     return null
