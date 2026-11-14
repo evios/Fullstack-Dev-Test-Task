@@ -1,5 +1,3 @@
-from typing import Any
-
 from fastapi import APIRouter, Depends
 from sqlmodel import col, func, select
 
@@ -7,15 +5,16 @@ from app.api.deps import SessionDep, require_permission
 from app.core.permissions import Permission, UserRole
 from app.models import Item, MetricsPublic, User
 
-router = APIRouter(prefix="/metrics", tags=["metrics"])
-
-
-@router.get(
-    "/",
+# Guarding the whole router protects any metrics endpoint added later.
+router = APIRouter(
+    prefix="/metrics",
+    tags=["metrics"],
     dependencies=[Depends(require_permission(Permission.METRICS_READ))],
-    response_model=MetricsPublic,
 )
-def read_metrics(session: SessionDep) -> Any:
+
+
+@router.get("/")
+def read_metrics(session: SessionDep) -> MetricsPublic:
     """
     Get basic user and item metrics.
     """
