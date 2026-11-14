@@ -1,86 +1,125 @@
-# Ender Turing Full-Stack Developer Test Task
+# Full Stack FastAPI Template
 
-This assignment is for a developer role at Ender Turing.
+[![Test Docker Compose](../../actions/workflows/test-docker-compose.yml/badge.svg)](../../actions/workflows/test-docker-compose.yml)
+[![Test Backend](../../actions/workflows/test-backend.yml/badge.svg)](../../actions/workflows/test-backend.yml)
 
-Add role-aware access control to the existing
-[Full-Stack FastAPI Template](https://github.com/fastapi/full-stack-fastapi-template/tree/master).
+## Role-based access control
 
-The stack is FastAPI, SQLModel, PostgreSQL, React and TypeScript.
+This repository implements the Ender Turing test task ([TASK.md](./TASK.md)). The template's single `is_superuser` flag is replaced by three access levels:
 
-## Timebox
+| | Admin | Manager | Member |
+|---|:-:|:-:|:-:|
+| Own profile, password and items | ✓ | ✓ | ✓ |
+| View users | ✓ | ✓ | – |
+| View metrics | ✓ | ✓ | – |
+| Create, edit and delete users; change their role and active status | ✓ | – | – |
+| Other users' items; admin utilities (test email, recovery-email preview) | ✓ | – | – |
 
-Aim for about **one hour**. Submit the best coherent solution you can within that
-time and state how long you actually spent.
+- **Rules:** `backend/app/core/permissions.py` maps each role to its permissions, and endpoints are guarded with `require_permission(...)` from `backend/app/api/deps.py`. Self-registration always creates members. Admins can't change their own role, deactivate themselves or delete themselves, so at least one admin always remains.
+- **Existing sessions:** the JWT only identifies the user. The role and active status are read from the database on every request, so changes apply immediately. An invalid session (bad token, deleted or deactivated user) gets `401`; a missing permission gets `403`.
+- **Frontend:** `GET /api/v1/users/me` returns the user's `permissions`. Navigation, buttons and route guards use them, and opening a page you can't access shows "Access denied".
+- **Migration:** existing superusers become admins and everyone else becomes a member; nobody becomes a manager. Downgrading turns admins back into superusers.
+- **API change:** `is_superuser` is replaced by `role` (`admin`, `manager` or `member`) in the user schemas.
 
-AI coding tools are allowed. You remain responsible for every submitted change.
+### Try the three roles locally
 
-Prioritize working, understandable code. There is no bonus for extensive
-documentation, diagrams, agent configuration, generated reports or a large number
-of tests.
+Set up the project as described in [development.md](./development.md), then create the demo accounts:
 
-## Product requirements
+```bash
+cd backend
+uv run python app/seed_demo_users.py
+```
 
-Introduce three access levels:
+With the Docker Compose stack, run `docker compose exec backend python app/seed_demo_users.py` instead.
 
-- **Admin** can manage users and their access.
-- **Manager** can view users and metrics, but cannot change user access.
-- **Member** can access and update their own profile.
+| Email | Role |
+|---|---|
+| `admin@example.com` (`FIRST_SUPERUSER`) | Admin |
+| `manager@example.com` | Manager |
+| `member@example.com` | Member |
 
-The metrics page may be a simple stub. Existing application features should keep
-working unless a change is necessary for the new access model.
+All three use `FIRST_SUPERUSER_PASSWORD` from `.env` (`changethis` by default). The backend tests delete all users from the local database when they finish, so run the seed script again after running them.
 
-Authorization must be enforced by the backend. The frontend should reflect the
-same access rules and handle direct navigation to unauthorized pages sensibly.
+## Technology Stack and Features
 
-For behavior that is not specified, make reasonable assumptions and implement
-them consistently.
+- ⚡ [**FastAPI**](https://fastapi.tiangolo.com) for the Python backend API.
+  - 🧰 [SQLModel](https://sqlmodel.tiangolo.com) for the Python SQL database interactions (ORM).
+  - 🔍 [Pydantic](https://docs.pydantic.dev), used by FastAPI, for the data validation and settings management.
+  - 💾 [PostgreSQL](https://www.postgresql.org) as the SQL database.
+- 🚀 [React](https://react.dev) for the frontend.
+  - 🧩 Built into the backend application and served by FastAPI on the same domain as the API.
+  - 💃 Using TypeScript, hooks, [Vite](https://vitejs.dev), and other parts of a modern frontend stack.
+  - 🎨 [Tailwind CSS](https://tailwindcss.com) and [shadcn/ui](https://ui.shadcn.com) for the frontend components.
+  - 🤖 An automatically generated frontend client.
+  - 🧪 [Playwright](https://playwright.dev) for end-to-end testing.
+  - 🦇 Dark mode support.
+- ☁️ [FastAPI Cloud](https://fastapicloud.com) for deployment.
+- 🐋 [Docker Compose](https://www.docker.com) for local services and self-hosted deployment.
+  - 📞 [Traefik](https://traefik.io) as a reverse proxy with automatic HTTPS.
+- 🔒 Secure password hashing by default.
+- 🔑 JWT (JSON Web Token) authentication.
+- 📫 Email-based password recovery.
+- ✉️ [React Email](https://react.email) for email templates.
+- 📬 [Mailpit](https://mailpit.axllent.org) for local email testing during development.
+- ✅ Tests with [Pytest](https://pytest.org).
+- 🏭 CI (continuous integration) and CD (continuous deployment) based on GitHub Actions.
 
-## Existing production context
+### Dashboard Login
 
-Treat the template as an already deployed application, not a new project:
+![Dashboard login screenshot](img/login.png)
 
-- The database contains existing users created with the current `is_superuser`
-  model.
-- Existing data must survive the migration without unintended privilege changes.
-- Access or active-status changes must affect users who already have a session.
-- Assume migrations run against a populated database.
+### Dashboard - Admin
 
-You decide how roles or permissions are represented, how compatibility is handled,
-where authorization checks live, and how the backend and frontend communicate
-access information.
+![Admin dashboard screenshot](img/dashboard.png)
 
-## Expected implementation
+### Dashboard - Items
 
-- A database migration for any schema changes.
-- Backend and frontend behavior for all three access levels.
-- Focused automated tests for the security-critical behavior you consider most
-  important.
-- A minimal way for the reviewer to exercise all three access levels locally.
-- Existing project setup and test commands should continue to work. If your changes
-  require different commands, update the relevant instructions.
+![Items dashboard screenshot](img/dashboard-items.png)
 
-Keep the change focused. Unrelated refactoring, infrastructure work and visual
-polish are outside the task.
+### Dashboard - Dark Mode
 
-## Submission
+![Dark mode dashboard screenshot](img/dashboard-dark.png)
 
-Provide only:
+### React Email Templates
 
-1. A GitHub repository or pull request containing the working implementation and
-   its commit history.
-2. The commands needed to run the solution and its tests, if they differ from the
-   original template.
-3. The **complete raw export** of every AI coding conversation used for the task,
-   committed under `ai-conversations/`.
+![Email templates screenshot](img/react-email.png)
 
-The AI export must contain the original prompts and responses. A summary,
-retelling, selected excerpts or generated description of the conversation is not
-a replacement for the raw export. Remove secrets if necessary and mark any
-redactions clearly.
+### Mailpit - Local Email Testing
 
-The code is the primary deliverable. We will review correctness, security,
-maintainability, consistency, migration safety, scope control, and how the AI tool
-was directed and validated.
+![Mailpit screenshot](img/mailpit.png)
 
-Be prepared to explain the implementation and make a small change to an access
-rule during a follow-up conversation.
+### Interactive API Documentation
+
+![API docs](img/docs.png)
+
+## How to Use It
+
+Click the **Use this template** button at the top of this page to create a new repository.
+
+## Backend Development
+
+Backend docs: [backend/README.md](./backend/README.md).
+
+## Frontend Development
+
+Frontend docs: [frontend/README.md](./frontend/README.md).
+
+## Deployment
+
+FastAPI Cloud deployment: [deployment.md](./deployment.md).
+
+Self-hosted deployment with Docker Compose: [deployment-docker-compose.md](./deployment-docker-compose.md).
+
+## Development
+
+General development docs: [development.md](./development.md).
+
+This includes the local FastAPI and Vite workflow, Docker Compose services, `.env` configuration, and more.
+
+## Release Notes
+
+Check the file [release-notes.md](./release-notes.md).
+
+## License
+
+The Full Stack FastAPI Template is licensed under the terms of the MIT license.
