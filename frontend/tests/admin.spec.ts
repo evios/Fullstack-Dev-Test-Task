@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test"
 import { firstSuperuser, firstSuperuserPassword } from "./config.ts"
 import { createUser } from "./utils/privateApi"
 import { randomEmail, randomPassword } from "./utils/random"
-import { logInUser } from "./utils/user"
+import { logInUser, logOutUser } from "./utils/user"
 
 test("Admin page is accessible and shows correct title", async ({ page }) => {
   await page.goto("/admin")
@@ -42,7 +42,7 @@ test.describe("Admin user management", () => {
     await expect(userRow).toBeVisible()
   })
 
-  test("Create a superuser", async ({ page }) => {
+  test("Create an admin", async ({ page }) => {
     await page.goto("/admin")
 
     const email = randomEmail()
@@ -53,7 +53,8 @@ test.describe("Admin user management", () => {
     await page.getByPlaceholder("Email").fill(email)
     await page.getByPlaceholder("Password").first().fill(password)
     await page.getByPlaceholder("Password").last().fill(password)
-    await page.getByLabel("Is superuser?").check()
+    await page.getByLabel("Role").click()
+    await page.getByRole("option", { name: "Admin" }).click()
     await page.getByLabel("Is active?").check()
 
     await page.getByRole("button", { name: "Save" }).click()
@@ -63,7 +64,7 @@ test.describe("Admin user management", () => {
     await expect(page.getByRole("dialog")).not.toBeVisible()
 
     const userRow = page.getByRole("row").filter({ hasText: email })
-    await expect(userRow.getByText("Superuser")).toBeVisible()
+    await expect(userRow.getByText("Admin", { exact: true })).toBeVisible()
   })
 
   test("Edit a user successfully", async ({ page }) => {
@@ -182,17 +183,61 @@ test.describe("Admin user management", () => {
 test.describe("Admin page access control", () => {
   test.use({ storageState: { cookies: [], origins: [] } })
 
-  test("Non-superuser cannot access admin page", async ({ page }) => {
+  test("Member gets Access denied for the users and metrics pages", async ({
+    page,
+  }) => {
     const email = randomEmail()
     const password = randomPassword()
 
     await createUser({ email, password })
     await logInUser(page, email, password)
 
-    await page.goto("/admin")
+    // Wait until the current user has loaded before checking for absent links.
+    await expect(page.getByTestId("user-menu")).toContainText(email)
+    await expect(page.getByRole("link", { name: "Users" })).toHaveCount(0)
+    await expect(page.getByRole("link", { name: "Metrics" })).toHaveCount(0)
 
-    await expect(page.getByRole("heading", { name: "Users" })).not.toBeVisible()
-    await expect(page).not.toHaveURL(/\/admin/)
+    for (const path of ["/admin", "/metrics"]) {
+      await page.goto(path)
+      await expect(page).toHaveURL(/\/forbidden$/)
+      await expect(
+        page.getByRole("heading", { name: "Access denied" }),
+      ).toBeVisible()
+    }
+  })
+
+  test("Manager sees users read-only and can open metrics", async ({
+    page,
+  }) => {
+    const email = randomEmail()
+    const password = randomPassword()
+
+    // The admin creates the manager in the UI, which also covers the role select.
+    await logInUser(page, firstSuperuser, firstSuperuserPassword)
+    await page.goto("/admin")
+    await page.getByRole("button", { name: "Add User" }).click()
+    await page.getByPlaceholder("Email").fill(email)
+    await page.getByPlaceholder("Password").first().fill(password)
+    await page.getByPlaceholder("Password").last().fill(password)
+    await page.getByLabel("Role").click()
+    await page.getByRole("option", { name: "Manager" }).click()
+    await page.getByLabel("Is active?").check()
+    await page.getByRole("button", { name: "Save" }).click()
+    await expect(page.getByText("User created successfully")).toBeVisible()
+    await logOutUser(page)
+
+    await logInUser(page, email, password)
+    await expect(page.getByRole("link", { name: "Users" })).toBeVisible()
+    await expect(page.getByRole("link", { name: "Metrics" })).toBeVisible()
+
+    await page.goto("/admin")
+    // Wait for real rows, so the checks below can't pass on the loading skeleton.
+    await expect(page.getByRole("cell", { name: /@/ }).first()).toBeVisible()
+    await expect(page.getByRole("button", { name: "Add User" })).toHaveCount(0)
+    await expect(page.locator("tbody").getByRole("button")).toHaveCount(0)
+
+    await page.goto("/metrics")
+    await expect(page.getByText("Total users")).toBeVisible()
   })
 
   test("Superuser can access admin page", async ({ page }) => {
